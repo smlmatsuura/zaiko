@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="在庫管理">
+<meta name="theme-color" content="#2f5d9e">
+<title>在庫管理</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--tx:#1c1e21;--sub:#6b7280;--ln:#e5e7eb;--ac:#2f5d9e;--wn:#c2410c;--hd:#e9ecf1;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#111214;--card:#1c1e22;--tx:#eceef1;--sub:#9aa1ad;--ln:#2d3038;--ac:#6c9be0;--wn:#fb923c;--hd:#25282e}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--tx);font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;padding-bottom:90px}
+header{position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);padding:12px 14px 8px;z-index:5}
+h1{font-size:20px;margin:0 0 8px;display:flex;justify-content:space-between;align-items:center}
+.row{display:flex;gap:8px}
+input,button{font:inherit;color:var(--tx)}
+#q{flex:1;padding:10px 12px;border:1px solid var(--ln);border-radius:10px;background:var(--card);min-width:0}
+.btn{padding:10px 14px;border:1px solid var(--ln);border-radius:10px;background:var(--card)}
+.btn.p{background:var(--ac);color:#fff;border-color:var(--ac)}
+.btn.on{background:var(--ac);color:#fff}
+.cat{background:var(--hd);padding:6px 14px;font-size:13px;font-weight:600;color:var(--sub);margin-top:10px}
+.it{display:flex;align-items:center;gap:8px;background:var(--card);padding:10px 14px;border-bottom:1px solid var(--ln)}
+.nm{flex:1;min-width:0;font-size:15px;line-height:1.3}
+.dt{display:block;font-size:11px;color:var(--sub)}
+.st{display:flex;align-items:center;gap:6px}
+.st button{width:38px;height:38px;border-radius:10px;border:1px solid var(--ln);background:var(--card);font-size:20px}
+.st input{width:62px;height:38px;text-align:center;border:1px solid var(--ln);border-radius:10px;background:var(--bg);font-size:16px;font-weight:600}
+.u{font-size:12px;color:var(--sub);width:34px}
+.low input{color:var(--wn)}
+.del{border:none;background:none;color:var(--wn);font-size:13px}
+#add{display:none;background:var(--card);margin:10px 14px;padding:12px;border-radius:12px;border:1px solid var(--ln)}
+#add .row{margin-bottom:8px}
+#add input{padding:9px;border:1px solid var(--ln);border-radius:8px;background:var(--bg);flex:1;min-width:0}
+.ei{width:100%;padding:7px 9px;border:1px solid var(--ac);border-radius:8px;background:var(--bg);font-size:14px;min-width:0;flex:1}
+.emp{text-align:center;color:var(--sub);padding:30px}
+#login{display:none;text-align:center;padding:80px 24px}
+#login p{color:var(--sub);line-height:1.6}
+#foot{text-align:center;margin-top:24px}
+#foot button{border:none;background:none;color:var(--sub);font-size:13px;text-decoration:underline}
+</style>
+</head>
+<body>
+<div id="login">
+<h1 style="justify-content:center">在庫管理</h1>
+<p>Microsoftアカウントでログインすると、<br>みんなで同じ在庫を見られます。</p>
+<button class="btn p" id="lg" style="padding:14px 26px;font-size:16px">Microsoftでログイン</button>
+<p id="lerr" style="color:var(--wn);font-size:13px"></p>
+</div>
+<div id="app" style="display:none">
+<header>
+<h1><span>在庫管理</span><span style="font-size:12px;font-weight:400;color:var(--sub)" id="cnt"></span></h1>
+<div class="row">
+<input id="q" type="search" placeholder="品名で検索">
+<button class="btn" id="tg">追加</button>
+<button class="btn" id="ed">編集</button>
+</div>
+</header>
+<div id="add">
+<div class="row"><input id="ac" list="cl" placeholder="分類（例：ビス）"><datalist id="cl"></datalist></div>
+<div class="row"><input id="an" placeholder="品名"></div>
+<div class="row"><input id="aq" type="number" inputmode="decimal" placeholder="数量"><input id="au" placeholder="単位（本・枚…）"></div>
+<button class="btn p" id="ab" style="width:100%">登録</button>
+</div>
+<main id="list"></main>
+<div id="foot"><button id="lo">ログアウト</button></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/lib/msal-browser.min.js"></script>
+<script>
+var CLIENT_ID="7806d507-6cf4-49ad-b426-30b64e18879c";
+var SC=["Files.ReadWrite.AppFolder"];
+var URL_F="https://graph.microsoft.com/v1.0/me/drive/special/approot:/zaiko.json:/content";
+var D=[["ネコ","ネコ三穴ストレート",225,"枚"],["ネコ","ネコ二穴",270,"枚"],["ネコ","三穴曲げ",100,"枚"],
+["ビス","皿 D8 M5×15",300,"本"],["ビス","皿 D8 M4×15",200,"本"],["ビス","皿 D8 M4×25",200,"本"],["ビス","皿 D8 M4×30",200,"本"],["ビス","皿 D8 M4×35",500,"本"],["ビス","皿 D8 M4×40",500,"本"],["ビス","アンダーカット D8 M4×12",1000,"本"],["ビス","なべ M4×10",200,"本"],
+["金具・小物","蝶番ワッシャー 1.5mm",0,""],["金具・小物","蝶番ワッシャー 3mm",0,""],["金具・小物","ビスケース 4分割",5,"個"],["金具・小物","ビスケース 小",6,"個"],["金具・小物","ドア止め",0,""],["金具・小物","ニブラ部品",0,""],
+["清掃","マジックリン",2,""],["清掃","マイクロファイバー",2,""],
+["文具","替芯 黒",1,"cs"],["文具","替芯 白",1,"cs"],["文具","替芯 赤",1,"cs"],["文具","黒マジック",7,"本"],
+["コーキング","コーキングガン",2,""],["コーキング","ダークブラウン",7,"本"],["コーキング","アンバー",1,"本"],["コーキング","クリヤー",1,"本"],["コーキング","ブラック",1.5,"本"],
+["研磨","ベルトンペーパー 80",6,"パック"],["研磨","ベルトンペーパー 60",3,"パック"],["研磨","ベルトンペーパー 40",5,"パック"],
+["鍵関連","鍵札",850,"枚"],["鍵関連","鍵袋",5,"枚"],
+["養生・その他","マスキングテープ 18mm",15,"個"],["養生・その他","マスキングテープ 30mm",5,"個"],["養生・その他","透明ポリ",3,"本"]];
+var all=[],edit=false,armed=null,busy=false,timer=null,pca=null;
+function $(i){return document.getElementById(i)}
+function today(){var d=new Date();return (d.getMonth()+1)+"/"+d.getDate()}
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function status(m){$("cnt").textContent=m}
+function live(){return all.filter(function(i){return !i.x})}
+function find(id){return all.filter(function(i){return i.id==id})[0]}
+function touch(it){it.t=Date.now()}
+function merge(a,b){var m={};a.concat(b).forEach(function(i){var c=m[i.id];if(!c||(i.t||0)>(c.t||0))m[i.id]=i});return Object.keys(m).map(function(k){return m[k]})}
+function typing(){var a=document.activeElement;return a&&a.tagName==="INPUT"&&a.closest("#list")}
+function render(){
+var f=$("q").value.trim().toLowerCase(),g={},o=[],h="",items=live();
+items.slice().sort(function(a,b){return a.o-b.o}).forEach(function(it){if(f&&(it.n+it.c).toLowerCase().indexOf(f)<0)return;if(!g[it.c]){g[it.c]=[];o.push(it.c)}g[it.c].push(it)});
+o.forEach(function(c){h+='<div class="cat">'+esc(c)+'</div>';g[c].forEach(function(it){
+h+='<div class="it'+(it.q<=0?' low':'')+'"><div class="nm">'+(edit?'<input class="ei" data-f="n" data-e="'+it.id+'" value="'+esc(it.n)+'"><div class="row" style="margin-top:4px"><input class="ei" data-f="c" data-e="'+it.id+'" value="'+esc(it.c)+'" placeholder="分類"><input class="ei" data-f="u" data-e="'+it.id+'" value="'+esc(it.u)+'" placeholder="単位" style="width:60px;flex:none"></div>':esc(it.n)+'<span class="dt">更新 '+esc(it.d)+'</span>')+'</div>'+
+(edit?'<button class="del" data-x="'+it.id+'">'+(armed===it.id?'もう一度押して削除':'削除')+'</button>':'')+
+'<div class="st"><button data-m="'+it.id+'">−</button><input type="number" inputmode="decimal" step="any" value="'+it.q+'" data-i="'+it.id+'"><button data-p="'+it.id+'">＋</button></div><div class="u">'+esc(it.u)+'</div></div>'})});
+$("list").innerHTML=h||'<div class="emp">該当なし</div>';
+var cl="",seen={};items.forEach(function(i){if(!seen[i.c]){seen[i.c]=1;cl+='<option value="'+esc(i.c)+'">'}});$("cl").innerHTML=cl}
+function token(){var acc=pca.getActiveAccount();return pca.acquireTokenSilent({scopes:SC,account:acc}).then(function(r){return r.accessToken}).catch(function(){pca.acquireTokenRedirect({scopes:SC});return new Promise(function(){})})}
+function gr(method,body){return token().then(function(t){var h={Authorization:"Bearer "+t};if(body)h["Content-Type"]="application/json";return fetch(URL_F,{method:method,headers:h,body:body})})}
+function load(){return gr("GET").then(function(r){if(r.status===404)return null;if(!r.ok)throw new Error("load "+r.status);return r.json()})}
+function push(){clearTimeout(timer);status("同期待ち…");timer=setTimeout(doSync,600)}
+function doSync(){if(busy){timer=setTimeout(doSync,500);return}busy=true;status("同期中…");
+load().then(function(r){all=merge(all,(r&&r.items)||[]);return gr("PUT",JSON.stringify({v:1,items:all}))})
+.then(function(r){if(!r.ok)throw new Error("save "+r.status);status(live().length+"品目 ・同期済み");busy=false;if(!typing())render()})
+.catch(function(e){busy=false;status("同期失敗：再試行中");setTimeout(push,5000)})}
+function poll(){if(busy||document.hidden||typing())return;busy=true;
+load().then(function(r){busy=false;if(!r)return;var before=JSON.stringify(all);all=merge(all,r.items||[]);if(JSON.stringify(all)!==before&&!typing())render();status(live().length+"品目 ・同期済み")}).catch(function(){busy=false;status("オフライン")})}
+function start(){$("login").style.display="none";$("app").style.display="block";status("読み込み中…");
+load().then(function(r){if(r&&r.items){all=r.items}else{all=D.map(function(x,i){return{id:"i"+i,c:x[0],n:x[1],q:x[2],u:x[3],d:"11/2",o:i,t:1}});push()}
+render();status(live().length+"品目 ・同期済み");setInterval(poll,10000);document.addEventListener("visibilitychange",function(){if(!document.hidden)poll()})})
+.catch(function(e){status("読み込み失敗");$("list").innerHTML='<div class="emp">読み込めませんでした。<br>ページを開き直してください。<br><small>'+esc(e.message)+'</small></div>'})}
+function chg(id,v){var it=find(id);if(!it)return;it.q=Math.max(0,Math.round(v*100)/100);it.d=today();touch(it);render();push()}
+$("list").addEventListener("click",function(e){var t=e.target;
+if(t.dataset.m){var a=find(t.dataset.m);chg(a.id,a.q-1)}
+else if(t.dataset.p){var b=find(t.dataset.p);chg(b.id,b.q+1)}
+else if(t.dataset.x){var c=find(t.dataset.x);if(armed===c.id){armed=null;c.x=1;touch(c);render();push()}else{armed=c.id;render()}}});
+$("list").addEventListener("change",function(e){var t=e.target;
+if(t.dataset.e){var it=find(t.dataset.e),v=t.value.trim(),f=t.dataset.f;if(it){if(f==="n"&&!v){render();return}it[f]=v||(f==="c"?"未分類":"");touch(it);render();push()}return}
+if(t.dataset.i){var n=parseFloat(t.value);chg(t.dataset.i,isNaN(n)?0:n)}});
+$("q").addEventListener("input",render);
+$("tg").onclick=function(){var a=$("add");a.style.display=a.style.display==="block"?"none":"block"};
+$("ed").onclick=function(){edit=!edit;armed=null;this.className="btn"+(edit?" on":"");render()};
+$("ab").onclick=function(){var c=$("ac").value.trim()||"未分類",n=$("an").value.trim();if(!n)return;var q=parseFloat($("aq").value);
+var o=all.reduce(function(m,i){return Math.max(m,i.o||0)},0)+1;
+var it={id:"n"+Date.now().toString(36)+Math.floor(Math.random()*1000),c:c,n:n,q:isNaN(q)?0:q,u:$("au").value.trim(),d:today(),o:o,t:Date.now()};
+all.push(it);["an","aq","au"].forEach(function(k){$(k).value=""});render();push()};
+$("lg").onclick=function(){pca.loginRedirect({scopes:SC})};
+$("lo").onclick=function(){pca.logoutRedirect({account:pca.getActiveAccount()})};
+function showLogin(){$("login").style.display="block";$("app").style.display="none"}
+try{
+pca=new msal.PublicClientApplication({auth:{clientId:CLIENT_ID,authority:"https://login.microsoftonline.com/consumers",redirectUri:location.origin+location.pathname},cache:{cacheLocation:"localStorage"}});
+pca.initialize().then(function(){return pca.handleRedirectPromise()}).then(function(r){
+var acc=(r&&r.account)||pca.getAllAccounts()[0];if(acc){pca.setActiveAccount(acc);start()}else showLogin()})
+.catch(function(e){showLogin();$("lerr").textContent="ログインエラー："+e.message})
+}catch(e){showLogin();$("lerr").textContent="読み込みエラー："+e.message}
+</script>
+</body>
+</html>
