@@ -61,6 +61,7 @@ input,button{font:inherit;color:var(--tx)}
 <input id="q" type="search" placeholder="品名で検索">
 <button class="btn" id="tg">追加</button>
 <button class="btn" id="ed">編集</button>
+<button class="btn" id="rf" aria-label="更新">↻</button>
 </div>
 </header>
 <div id="add">
@@ -145,6 +146,8 @@ var o=all.reduce(function(m,i){return Math.max(m,i.o||0)},0)+1;
 var it={id:"n"+Date.now().toString(36)+Math.floor(Math.random()*1000),c:c,n:n,q:isNaN(q)?0:q,u:$("au").value.trim(),d:today(),o:o,t:Date.now()};
 all.push(it);["an","aq","au","ac"].forEach(function(k){$(k).value=""});render();$("as").value=c;$("acr").style.display="none";push()};
 $("as").onchange=function(){$("acr").style.display=this.value==="__new"?"flex":"none";if(this.value==="__new")$("ac").focus()};
+$("rf").onclick=function(){if(busy)return;busy=true;status("更新中…");
+load().then(function(r){busy=false;if(r)all=merge(all,r.items||[]);render();status(live().length+"品目 ・同期済み")}).catch(function(){busy=false;status("更新失敗")})};
 $("lg").onclick=function(){pca.loginRedirect({scopes:SC})};
 $("lo").onclick=function(){pca.logoutRedirect({account:pca.getActiveAccount()})};
 function showLogin(){$("login").style.display="block";$("app").style.display="none"}
