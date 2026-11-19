@@ -35,6 +35,7 @@ input,button{font:inherit;color:var(--tx)}
 #add{display:none;background:var(--card);margin:10px 14px;padding:12px;border-radius:12px;border:1px solid var(--ln)}
 #add .row{margin-bottom:8px}
 #add input{padding:9px;border:1px solid var(--ln);border-radius:8px;background:var(--bg);flex:1;min-width:0}
+#add select{padding:9px;border:1px solid var(--ln);border-radius:8px;background:var(--bg);flex:1;min-width:0;font:inherit;color:var(--tx)}
 .ei{width:100%;padding:7px 9px;border:1px solid var(--ac);border-radius:8px;background:var(--bg);font-size:14px;min-width:0;flex:1}
 .emp{text-align:center;color:var(--sub);padding:30px}
 #login{display:none;text-align:center;padding:80px 24px}
@@ -60,7 +61,8 @@ input,button{font:inherit;color:var(--tx)}
 </div>
 </header>
 <div id="add">
-<div class="row"><input id="ac" list="cl" placeholder="分類（例：ビス）"><datalist id="cl"></datalist></div>
+<div class="row"><select id="as"></select></div>
+<div class="row" id="acr" style="display:none"><input id="ac" placeholder="新しい分類の名前（例：ビス）"></div>
 <div class="row"><input id="an" placeholder="品名"></div>
 <div class="row"><input id="aq" type="number" inputmode="decimal" placeholder="数量"><input id="au" placeholder="単位（本・枚…）"></div>
 <button class="btn p" id="ab" style="width:100%">登録</button>
@@ -100,7 +102,13 @@ h+='<div class="it'+(it.q<=0?' low':'')+'"><div class="nm">'+(edit?'<input class
 (edit?'<button class="del" data-x="'+it.id+'">'+(armed===it.id?'もう一度押して削除':'削除')+'</button>':'')+
 '<div class="st"><button data-m="'+it.id+'">−</button><input type="number" inputmode="decimal" step="any" value="'+it.q+'" data-i="'+it.id+'"><button data-p="'+it.id+'">＋</button></div><div class="u">'+esc(it.u)+'</div></div>'})});
 $("list").innerHTML=h||'<div class="emp">該当なし</div>';
-var cl="",seen={};items.forEach(function(i){if(!seen[i.c]){seen[i.c]=1;cl+='<option value="'+esc(i.c)+'">'}});$("cl").innerHTML=cl}
+fillCats(items)}
+function fillCats(items){var s=$("as"),cur=s.value,seen={},h="";
+items.slice().sort(function(a,b){return a.o-b.o}).forEach(function(i){if(!seen[i.c]){seen[i.c]=1;h+='<option value="'+esc(i.c)+'">'+esc(i.c)+'</option>'}});
+h+='<option value="__new">＋ 新しい分類を作る</option>';
+if(s.dataset.h===h)return;s.dataset.h=h;s.innerHTML=h;
+s.value=(cur&&(seen[cur]||cur==="__new"))?cur:(Object.keys(seen)[0]||"__new");
+$("acr").style.display=s.value==="__new"?"flex":"none"}
 function token(){var acc=pca.getActiveAccount();return pca.acquireTokenSilent({scopes:SC,account:acc}).then(function(r){return r.accessToken}).catch(function(){pca.acquireTokenRedirect({scopes:SC});return new Promise(function(){})})}
 function gr(method,body){return token().then(function(t){var h={Authorization:"Bearer "+t};if(body)h["Content-Type"]="application/json";return fetch(URL_F,{method:method,headers:h,body:body})})}
 function load(){return gr("GET").then(function(r){if(r.status===404)return null;if(!r.ok)throw new Error("load "+r.status);return r.json()})}
@@ -126,10 +134,11 @@ if(t.dataset.i){var n=parseFloat(t.value);chg(t.dataset.i,isNaN(n)?0:n)}});
 $("q").addEventListener("input",render);
 $("tg").onclick=function(){var a=$("add");a.style.display=a.style.display==="block"?"none":"block"};
 $("ed").onclick=function(){edit=!edit;armed=null;this.className="btn"+(edit?" on":"");render()};
-$("ab").onclick=function(){var c=$("ac").value.trim()||"未分類",n=$("an").value.trim();if(!n)return;var q=parseFloat($("aq").value);
+$("ab").onclick=function(){var sv=$("as").value,c=sv==="__new"?($("ac").value.trim()||"未分類"):sv,n=$("an").value.trim();if(!n)return;var q=parseFloat($("aq").value);
 var o=all.reduce(function(m,i){return Math.max(m,i.o||0)},0)+1;
 var it={id:"n"+Date.now().toString(36)+Math.floor(Math.random()*1000),c:c,n:n,q:isNaN(q)?0:q,u:$("au").value.trim(),d:today(),o:o,t:Date.now()};
-all.push(it);["an","aq","au"].forEach(function(k){$(k).value=""});render();push()};
+all.push(it);["an","aq","au","ac"].forEach(function(k){$(k).value=""});render();$("as").value=c;$("acr").style.display="none";push()};
+$("as").onchange=function(){$("acr").style.display=this.value==="__new"?"flex":"none";if(this.value==="__new")$("ac").focus()};
 $("lg").onclick=function(){pca.loginRedirect({scopes:SC})};
 $("lo").onclick=function(){pca.logoutRedirect({account:pca.getActiveAccount()})};
 function showLogin(){$("login").style.display="block";$("app").style.display="none"}
