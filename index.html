@@ -36,6 +36,9 @@ input,button{font:inherit;color:var(--tx)}
 #add .row{margin-bottom:8px}
 #add input{padding:9px;border:1px solid var(--ln);border-radius:8px;background:var(--bg);flex:1;min-width:0}
 #add select{padding:9px;border:1px solid var(--ln);border-radius:8px;background:var(--bg);flex:1;min-width:0;font:inherit;color:var(--tx)}
+.mv{display:flex;flex-direction:column;gap:4px}
+.mv button{width:34px;height:26px;border:1px solid var(--ln);border-radius:6px;background:var(--card);font-size:11px}
+.mv button:disabled{opacity:.3}
 .ei{width:100%;padding:7px 9px;border:1px solid var(--ac);border-radius:8px;background:var(--bg);font-size:14px;min-width:0;flex:1}
 .emp{text-align:center;color:var(--sub);padding:30px}
 #login{display:none;text-align:center;padding:80px 24px}
@@ -97,8 +100,8 @@ function typing(){var a=document.activeElement;return a&&a.tagName==="INPUT"&&a.
 function render(){
 var f=$("q").value.trim().toLowerCase(),g={},o=[],h="",items=live();
 items.slice().sort(function(a,b){return a.o-b.o}).forEach(function(it){if(f&&(it.n+it.c).toLowerCase().indexOf(f)<0)return;if(!g[it.c]){g[it.c]=[];o.push(it.c)}g[it.c].push(it)});
-o.forEach(function(c){h+='<div class="cat">'+esc(c)+'</div>';g[c].forEach(function(it){
-h+='<div class="it'+(it.q<=0?' low':'')+'"><div class="nm">'+(edit?'<input class="ei" data-f="n" data-e="'+it.id+'" value="'+esc(it.n)+'"><div class="row" style="margin-top:4px"><input class="ei" data-f="c" data-e="'+it.id+'" value="'+esc(it.c)+'" placeholder="分類"><input class="ei" data-f="u" data-e="'+it.id+'" value="'+esc(it.u)+'" placeholder="単位" style="width:60px;flex:none"></div>':esc(it.n)+'<span class="dt">更新 '+esc(it.d)+'</span>')+'</div>'+
+o.forEach(function(c){h+='<div class="cat">'+esc(c)+'</div>';g[c].forEach(function(it,ix){
+h+='<div class="it'+(it.q<=0?' low':'')+'">'+(edit&&!f?'<div class="mv"><button data-u="'+it.id+'"'+(ix===0?' disabled':'')+'>▲</button><button data-d="'+it.id+'"'+(ix===g[c].length-1?' disabled':'')+'>▼</button></div>':'')+'<div class="nm">'+(edit?'<input class="ei" data-f="n" data-e="'+it.id+'" value="'+esc(it.n)+'"><div class="row" style="margin-top:4px"><input class="ei" data-f="c" data-e="'+it.id+'" value="'+esc(it.c)+'" placeholder="分類"><input class="ei" data-f="u" data-e="'+it.id+'" value="'+esc(it.u)+'" placeholder="単位" style="width:60px;flex:none"></div>':esc(it.n)+'<span class="dt">更新 '+esc(it.d)+'</span>')+'</div>'+
 (edit?'<button class="del" data-x="'+it.id+'">'+(armed===it.id?'もう一度押して削除':'削除')+'</button>':'')+
 '<div class="st"><button data-m="'+it.id+'">−</button><input type="number" inputmode="decimal" step="any" value="'+it.q+'" data-i="'+it.id+'"><button data-p="'+it.id+'">＋</button></div><div class="u">'+esc(it.u)+'</div></div>'})});
 $("list").innerHTML=h||'<div class="emp">該当なし</div>';
@@ -123,9 +126,12 @@ function start(){$("login").style.display="none";$("app").style.display="block";
 load().then(function(r){if(r&&r.items){all=r.items}else{all=D.map(function(x,i){return{id:"i"+i,c:x[0],n:x[1],q:x[2],u:x[3],d:"11/2",o:i,t:1}});push()}
 render();status(live().length+"品目 ・同期済み");setInterval(poll,10000);document.addEventListener("visibilitychange",function(){if(!document.hidden)poll()})})
 .catch(function(e){status("読み込み失敗");$("list").innerHTML='<div class="emp">読み込めませんでした。<br>ページを開き直してください。<br><small>'+esc(e.message)+'</small></div>'})}
+function move(id,dir){var it=find(id);if(!it)return;var l=live().filter(function(i){return i.c===it.c}).sort(function(a,b){return a.o-b.o});var n=l[l.indexOf(it)+dir];if(!n)return;var a=it.o,b=n.o;if(a===b){it.o=a+dir*0.5}else{it.o=b;n.o=a;touch(n)}touch(it);render();push()}
 function chg(id,v){var it=find(id);if(!it)return;it.q=Math.max(0,Math.round(v*100)/100);it.d=today();touch(it);render();push()}
 $("list").addEventListener("click",function(e){var t=e.target;
 if(t.dataset.m){var a=find(t.dataset.m);chg(a.id,a.q-1)}
+else if(t.dataset.u){move(t.dataset.u,-1)}
+else if(t.dataset.d){move(t.dataset.d,1)}
 else if(t.dataset.p){var b=find(t.dataset.p);chg(b.id,b.q+1)}
 else if(t.dataset.x){var c=find(t.dataset.x);if(armed===c.id){armed=null;c.x=1;touch(c);render();push()}else{armed=c.id;render()}}});
 $("list").addEventListener("change",function(e){var t=e.target;
